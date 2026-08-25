@@ -14,7 +14,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
-import { formatCurrency } from '../utils';
+import { formatCurrency, compressImage } from '../utils';
 import { CATEGORIES } from '../constants';
 import { TransactionType } from '../types';
 import toast from 'react-hot-toast';
@@ -39,14 +39,14 @@ const Transactions = () => {
     receipt: ''
   });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, receipt: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file);
+      setFormData({ ...formData, receipt: compressed });
+    } catch {
+      toast.error('Gagal memproses foto struk. Coba foto lain.');
     }
   };
 

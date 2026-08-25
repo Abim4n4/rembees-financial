@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { SPJReport } from '../types';
+import { safeLocalStorageSet } from '../utils';
 
 interface SPJContextType {
   reports: SPJReport[];
@@ -26,9 +28,21 @@ export const SPJProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return [];
   });
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reports));
+    // Skip the write on mount (we just loaded this exact data from storage).
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+    const ok = safeLocalStorageSet(STORAGE_KEY, JSON.stringify(reports));
+    if (!ok) {
+      toast.error(
+        'Gagal menyimpan laporan — penyimpanan browser penuh. Perubahan terakhir TIDAK tersimpan dan akan hilang jika reload. Hapus beberapa laporan lama (terutama yang ada foto kwitansi) lalu coba lagi.',
+        { duration: 8000 }
+      );
+    }
   }, [reports]);
 
   const addReport = (r: Omit<SPJReport, 'id' | 'createdAt'>) => {

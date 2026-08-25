@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { Transaction, User } from '../types';
+import { safeLocalStorageSet } from '../utils';
 
 export type AppTheme = 'dark' | 'light' | 'matrix' | 'purple' | 'neon';
 
@@ -45,8 +47,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return (saved as AppTheme) || 'dark';
   });
 
+  const isFirstTxRun = useRef(true);
+
   useEffect(() => {
-    localStorage.setItem('rembees_transactions', JSON.stringify(transactions));
+    if (isFirstTxRun.current) {
+      isFirstTxRun.current = false;
+      return;
+    }
+    const ok = safeLocalStorageSet('rembees_transactions', JSON.stringify(transactions));
+    if (!ok) {
+      toast.error(
+        'Gagal menyimpan transaksi — penyimpanan browser penuh. Perubahan terakhir TIDAK tersimpan dan akan hilang jika reload. Hapus beberapa transaksi lama (terutama yang ada foto struk) lalu coba lagi.',
+        { duration: 8000 }
+      );
+    }
   }, [transactions]);
 
   useEffect(() => {

@@ -15,6 +15,58 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+// Resizes and re-encodes an uploaded image file into a compact base64 JPEG.
+// Photos straight from a phone camera can be several MB each; storing them raw in
+// localStorage (which has only ~5-10MB total quota) quickly fills it up and causes
+// later writes to silently fail — which looks like "data disappearing on refresh".
+// Downscaling to maxDimension + JPEG quality keeps each receipt well under ~200KB.
+export function compressImage(file: File, maxDimension = 1000, quality = 0.7): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Gagal membaca file gambar'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Gagal memuat gambar'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas tidak didukung')); return; }
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Wraps localStorage.setItem with error handling: quota-exceeded and other storage
+// failures are common once photos/signatures accumulate, and failing silently makes
+// data look like it "disappeared" on the next reload. Returns true on success.
+export function safeLocalStorageSet(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    console.error(`Gagal menyimpan ke localStorage (key: ${key}):`, err);
+    return false;
+  }
+}
+
 export function exportToCSV(data: any[], filename: string) {
   if (data.length === 0) return;
   

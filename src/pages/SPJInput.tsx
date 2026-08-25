@@ -16,6 +16,7 @@ import { useFinance } from '../context/FinanceContext';
 import { SPJ_CATEGORIES } from '../constants';
 import SignaturePad, { SignaturePadHandle } from '../components/SignaturePad';
 import CurrencyInput from '../components/CurrencyInput';
+import { compressImage } from '../utils';
 
 const emptyForm = {
   tanggal: new Date().toISOString().split('T')[0],
@@ -61,12 +62,14 @@ const SPJInput = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setForm(prev => ({ ...prev, kwitansi: reader.result as string }));
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file);
+      setForm(prev => ({ ...prev, kwitansi: compressed }));
+    } catch {
+      toast.error('Gagal memproses foto kwitansi. Coba foto lain.');
     }
   };
 
