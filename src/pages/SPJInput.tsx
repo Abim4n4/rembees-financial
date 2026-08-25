@@ -6,7 +6,7 @@ import {
   ClipboardList,
   Tag,
   FileText,
-  DollarSign,
+  Banknote,
   Upload,
   Pencil,
 } from 'lucide-react';
@@ -15,6 +15,7 @@ import { useSPJ } from '../context/SPJContext';
 import { useFinance } from '../context/FinanceContext';
 import { SPJ_CATEGORIES } from '../constants';
 import SignaturePad, { SignaturePadHandle } from '../components/SignaturePad';
+import CurrencyInput from '../components/CurrencyInput';
 
 const emptyForm = {
   tanggal: new Date().toISOString().split('T')[0],
@@ -153,8 +154,8 @@ const SPJInput = () => {
         </div>
 
         <div>
-          <label className={labelClass}><DollarSign className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />Nominal (IDR)</label>
-          <input type="number" min="0" value={form.nominal} onChange={e => setForm({ ...form, nominal: e.target.value })} placeholder="150000" className={inputClass} />
+          <label className={labelClass}><Banknote className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />Nominal (IDR)</label>
+          <CurrencyInput value={form.nominal} onChange={val => setForm({ ...form, nominal: val })} placeholder="150.000" className={inputClass} />
         </div>
 
         <div>
