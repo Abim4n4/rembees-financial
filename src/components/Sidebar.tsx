@@ -9,7 +9,8 @@ import {
   Wallet,
   Menu,
   X,
-  Briefcase
+  Briefcase,
+  FilePlus2
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { cn } from '../utils';
@@ -23,7 +24,8 @@ const Sidebar = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: ArrowUpRight, label: 'Transaksi', path: '/transactions' },
     { icon: PieChart, label: 'Laporan', path: '/reports' },
-    { icon: Briefcase, label: 'Laporan SPD', path: '/spj' },
+    { icon: FilePlus2, label: 'Input SPD', path: '/spj/input' },
+    { icon: Briefcase, label: 'Laporan SPD', path: '/spj', end: true },
     { icon: Settings, label: 'Pengaturan', path: '/settings' },
   ];
 
@@ -43,6 +45,7 @@ const Sidebar = () => {
           <NavLink
             key={item.path}
             to={item.path}
+            end={(item as any).end}
             onClick={() => setIsOpen(false)}
             className={({ isActive }) => cn(
               "flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 group",

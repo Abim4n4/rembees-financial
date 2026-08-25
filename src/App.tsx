@@ -9,7 +9,8 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
-import SPJ from './pages/SPJ';
+import SPJList from './pages/SPJList';
+import SPJInput from './pages/SPJInput';
 import LoginPage from './pages/LoginPage';
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -41,7 +42,8 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/transactions" element={<Transactions />} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/spj" element={<SPJ />} />
+              <Route path="/spj" element={<SPJList />} />
+              <Route path="/spj/input" element={<SPJInput />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
