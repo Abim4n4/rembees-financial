@@ -14,11 +14,13 @@ import {
   Image as ImageIcon,
   FileUp,
   ArrowUpDown,
+  Pencil,
+  User,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSPJ } from '../context/SPJContext';
 import { useFinance } from '../context/FinanceContext';
-import { SPJ_CATEGORIES } from '../constants';
+import { SPJ_CATEGORIES, SPJ_CATEGORY_COLORS } from '../constants';
 import {
   formatCurrency,
   exportSPJToExcel,
@@ -42,13 +44,14 @@ const emptyForm = {
 };
 
 const SPJ = () => {
-  const { reports, addReport, deleteReport, importReports } = useSPJ();
+  const { reports, addReport, deleteReport, importReports, updateReport } = useSPJ();
   const { user } = useFinance();
   const [form, setForm] = useState({ ...emptyForm, namaPegawai: user?.name || '' });
   const [signature, setSignature] = useState<string | null>(null);
   const [previewReceipt, setPreviewReceipt] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const sigRef = useRef<SignaturePadHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +97,24 @@ const SPJ = () => {
     setForm({ ...emptyForm, namaPegawai: user?.name || '', tanggal: new Date().toISOString().split('T')[0] });
     sigRef.current?.clear();
     setSignature(null);
+    setEditingId(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const startEdit = (r: SPJReport) => {
+    setEditingId(r.id);
+    setForm({
+      tanggal: r.tanggal,
+      namaPegawai: r.namaPegawai,
+      area: r.area,
+      kegiatan: r.kegiatan,
+      kategori: r.kategori,
+      keterangan: r.keterangan,
+      nominal: String(r.nominal),
+      kwitansi: r.kwitansi,
+    });
+    setSignature(r.tandaTangan || null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -103,7 +123,11 @@ const SPJ = () => {
       toast.error('Mohon lengkapi Area, Kegiatan, dan Nominal.');
       return;
     }
-    addReport({
+    if (parseFloat(form.nominal) <= 0) {
+      toast.error('Nominal harus lebih besar dari 0. Pastikan angka penuh, misal 150000 bukan 150.');
+      return;
+    }
+    const payload = {
       tanggal: form.tanggal,
       namaPegawai: form.namaPegawai,
       area: form.area,
@@ -113,8 +137,14 @@ const SPJ = () => {
       nominal: parseFloat(form.nominal) || 0,
       kwitansi: form.kwitansi,
       tandaTangan: signature || undefined,
-    });
-    toast.success('Laporan SPJ berhasil disimpan');
+    };
+    if (editingId) {
+      updateReport(editingId, payload);
+      toast.success('Laporan SPJ berhasil diperbarui');
+    } else {
+      addReport(payload);
+      toast.success('Laporan SPJ berhasil disimpan');
+    }
     resetForm();
   };
 
@@ -213,6 +243,12 @@ const SPJ = () => {
           animate={{ opacity: 1, y: 0 }}
           className="lg:col-span-2 glass p-6 sm:p-8 rounded-3xl space-y-5 border border-neon-blue/20 h-fit"
         >
+          {editingId && (
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 bg-amber-400/10 px-3 py-2 rounded-xl">
+              <Pencil className="w-3.5 h-3.5" />
+              Mengedit laporan yang sudah ada
+            </div>
+          )}
           <div>
             <label className={labelClass}><MapPin className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />Area / Lokasi Tujuan</label>
             <input type="text" value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} placeholder="Contoh: Bandung / Kantor Cabang" className={inputClass} />
@@ -257,8 +293,17 @@ const SPJ = () => {
             type="submit"
             className="w-full bg-gradient-to-r from-neon-blue to-neon-purple text-white font-bold py-3.5 rounded-2xl neon-glow-blue hover:opacity-90 transition-all"
           >
-            Simpan SPJ
+            {editingId ? 'Update SPJ' : 'Simpan SPJ'}
           </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="w-full text-center text-xs text-slate-400 hover:text-foreground transition-colors -mt-2"
+            >
+              Batalkan edit
+            </button>
+          )}
         </motion.form>
 
         {/* List */}
@@ -284,9 +329,10 @@ const SPJ = () => {
                   <thead>
                     <tr className="border-b border-white/10 text-left">
                       <th className="px-5 py-3"><SortHeader label="Tanggal" k="tanggal" /></th>
-                      <th className="px-5 py-3"><SortHeader label="Kegiatan" k="kegiatan" /></th>
+                      <th className="px-5 py-3 text-[11px] uppercase tracking-wide font-bold text-slate-500">Lokasi</th>
                       <th className="px-5 py-3"><SortHeader label="Kategori" k="kategori" /></th>
-                      <th className="px-5 py-3 text-[11px] uppercase tracking-wide font-bold text-slate-500">Area</th>
+                      <th className="px-5 py-3"><SortHeader label="Keterangan / Judul" k="kegiatan" /></th>
+                      <th className="px-5 py-3 text-[11px] uppercase tracking-wide font-bold text-slate-500">Pengguna</th>
                       <th className="px-5 py-3 text-right"><div className="flex justify-end"><SortHeader label="Nominal" k="nominal" /></div></th>
                       <th className="px-5 py-3 text-[11px] uppercase tracking-wide font-bold text-slate-500 text-right">Aksi</th>
                     </tr>
@@ -295,14 +341,15 @@ const SPJ = () => {
                     {sortedReports.map(r => (
                       <tr key={r.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                         <td className="px-5 py-3.5 text-xs text-slate-400 whitespace-nowrap">{r.tanggal}</td>
+                        <td className="px-5 py-3.5 text-xs text-slate-400 max-w-[140px] truncate">{r.area}</td>
+                        <td className="px-5 py-3.5">
+                          <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full whitespace-nowrap ${SPJ_CATEGORY_COLORS[r.kategori] || 'bg-neon-blue/10 text-neon-blue'}`}>{r.kategori}</span>
+                        </td>
                         <td className="px-5 py-3.5 max-w-[220px]">
                           <p className="text-foreground font-medium truncate">{r.kegiatan}</p>
                           {r.keterangan && <p className="text-xs text-slate-500 truncate">{r.keterangan}</p>}
                         </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-[10px] uppercase tracking-wide bg-neon-blue/10 text-neon-blue px-2 py-0.5 rounded-full whitespace-nowrap">{r.kategori}</span>
-                        </td>
-                        <td className="px-5 py-3.5 text-xs text-slate-400 max-w-[160px] truncate">{r.area}</td>
+                        <td className="px-5 py-3.5 text-xs text-slate-400 max-w-[140px] truncate">{r.namaPegawai || '-'}</td>
                         <td className="px-5 py-3.5 text-right font-bold text-rose-400 whitespace-nowrap">{formatCurrency(r.nominal)}</td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1">
@@ -311,7 +358,10 @@ const SPJ = () => {
                                 <ImageIcon className="w-4 h-4" />
                               </button>
                             )}
-                            <button onClick={() => printSPJReports([r], `SPJ - ${r.kegiatan}`)} title="Print" className="p-2 rounded-lg text-slate-400 hover:text-neon-blue hover:bg-white/5 transition-colors">
+                            <button onClick={() => startEdit(r)} title="Edit" className="p-2 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-white/5 transition-colors">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => printSPJReports([r], `SPJ - ${r.kegiatan}`)} title="Cetak/Kwitansi" className="p-2 rounded-lg text-slate-400 hover:text-neon-blue hover:bg-white/5 transition-colors">
                               <Printer className="w-4 h-4" />
                             </button>
                             <button onClick={() => deleteReport(r.id)} title="Hapus" className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/5 transition-colors">
@@ -340,9 +390,11 @@ const SPJ = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-semibold text-foreground truncate">{r.kegiatan}</p>
-                          <span className="text-[10px] uppercase tracking-wide bg-neon-blue/10 text-neon-blue px-2 py-0.5 rounded-full">{r.kategori}</span>
+                          <span className={`text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full whitespace-nowrap ${SPJ_CATEGORY_COLORS[r.kategori] || 'bg-neon-blue/10 text-neon-blue'}`}>{r.kategori}</span>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">{r.area} &middot; {r.tanggal} &middot; {r.namaPegawai}</p>
+                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 flex-wrap">
+                          <MapPin className="w-3 h-3" />{r.area} &middot; {r.tanggal} &middot; <User className="w-3 h-3" />{r.namaPegawai || '-'}
+                        </p>
                         {r.keterangan && <p className="text-xs text-slate-400 mt-1">{r.keterangan}</p>}
                       </div>
                       <p className="text-sm font-bold text-rose-400 whitespace-nowrap">{formatCurrency(r.nominal)}</p>
@@ -353,8 +405,11 @@ const SPJ = () => {
                           <ImageIcon className="w-3.5 h-3.5" /> Lihat Kwitansi
                         </button>
                       )}
+                      <button onClick={() => startEdit(r)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-amber-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
+                        <Pencil className="w-3.5 h-3.5" /> Edit
+                      </button>
                       <button onClick={() => printSPJReports([r], `SPJ - ${r.kegiatan}`)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-neon-blue transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
-                        <Printer className="w-3.5 h-3.5" /> Print
+                        <Printer className="w-3.5 h-3.5" /> Cetak
                       </button>
                       <button onClick={() => deleteReport(r.id)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 ml-auto">
                         <Trash2 className="w-3.5 h-3.5" /> Hapus

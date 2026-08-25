@@ -21,6 +21,16 @@ export const SPJ_CATEGORIES: string[] = [
   'Lain-lain',
 ];
 
+export const SPJ_CATEGORY_COLORS: Record<string, string> = {
+  'Transportasi (BBM/Tol/Tiket)': 'bg-sky-500/10 text-sky-400',
+  'Akomodasi (Hotel/Penginapan)': 'bg-purple-500/10 text-purple-400',
+  'Konsumsi': 'bg-amber-500/10 text-amber-400',
+  'Komunikasi': 'bg-emerald-500/10 text-emerald-400',
+  'Uang Harian': 'bg-cyan-500/10 text-cyan-400',
+  'Perlengkapan': 'bg-pink-500/10 text-pink-400',
+  'Lain-lain': 'bg-slate-500/10 text-slate-400',
+};
+
 export const APP_COLORS = {
   primary: '#3b82f6',
   secondary: '#8b5cf6',
