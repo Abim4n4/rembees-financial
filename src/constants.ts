@@ -11,6 +11,16 @@ export const CATEGORIES: Category[] = [
   { id: 'other', name: 'Lainnya', icon: 'MoreHorizontal', color: '#6b7280' },
 ];
 
+export const SPJ_CATEGORIES: string[] = [
+  'Transportasi (BBM/Tol/Tiket)',
+  'Akomodasi (Hotel/Penginapan)',
+  'Konsumsi',
+  'Komunikasi',
+  'Uang Harian',
+  'Perlengkapan',
+  'Lain-lain',
+];
+
 export const APP_COLORS = {
   primary: '#3b82f6',
   secondary: '#8b5cf6',

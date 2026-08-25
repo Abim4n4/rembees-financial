@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
+import { SPJProvider } from './context/SPJContext';
 import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -8,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import SPJ from './pages/SPJ';
 import LoginPage from './pages/LoginPage';
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -31,18 +33,21 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
   return (
     <FinanceProvider>
-      <Toaster position="top-right" />
-      <Router>
-        <AppLayout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/transactions" element={<Transactions />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AppLayout>
-      </Router>
+      <SPJProvider>
+        <Toaster position="top-right" />
+        <Router>
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/transactions" element={<Transactions />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/spj" element={<SPJ />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AppLayout>
+        </Router>
+      </SPJProvider>
     </FinanceProvider>
   );
 }

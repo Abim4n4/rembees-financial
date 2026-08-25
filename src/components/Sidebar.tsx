@@ -8,7 +8,8 @@ import {
   LogOut,
   Wallet,
   Menu,
-  X
+  X,
+  Briefcase
 } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { cn } from '../utils';
@@ -22,6 +23,7 @@ const Sidebar = () => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: ArrowUpRight, label: 'Transaksi', path: '/transactions' },
     { icon: PieChart, label: 'Laporan', path: '/reports' },
+    { icon: Briefcase, label: 'Laporan SPD', path: '/spj' },
     { icon: Settings, label: 'Pengaturan', path: '/settings' },
   ];
 

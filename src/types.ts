@@ -22,3 +22,17 @@ export type Category = {
   icon: string;
   color: string;
 };
+
+export interface SPJReport {
+  id: string;
+  tanggal: string;
+  namaPegawai: string;
+  area: string;
+  kegiatan: string;
+  kategori: string;
+  keterangan: string;
+  nominal: number;
+  kwitansi?: string; // Base64 string for the receipt/nota image
+  tandaTangan?: string; // Base64 string (PNG) for the digital signature
+  createdAt: string;
+}
