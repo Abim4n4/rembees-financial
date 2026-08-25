@@ -13,6 +13,7 @@ import {
   X,
   Image as ImageIcon,
   FileUp,
+  ArrowUpDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSPJ } from '../context/SPJContext';
@@ -51,6 +52,34 @@ const SPJ = () => {
   const sigRef = useRef<SignaturePadHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [sortKey, setSortKey] = useState<'tanggal' | 'kegiatan' | 'kategori' | 'nominal'>('tanggal');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortedReports = [...reports].sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === 'nominal') cmp = a.nominal - b.nominal;
+    else cmp = String(a[sortKey]).localeCompare(String(b[sortKey]));
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const SortHeader = ({ label, k }: { label: string; k: typeof sortKey }) => (
+    <button
+      onClick={() => toggleSort(k)}
+      className={`flex items-center gap-1 text-[11px] uppercase tracking-wide font-bold hover:text-neon-blue transition-colors ${sortKey === k ? 'text-neon-blue' : 'text-slate-500'}`}
+    >
+      {label}
+      <ArrowUpDown className="w-3 h-3" />
+    </button>
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -248,41 +277,93 @@ const SPJ = () => {
               Belum ada laporan SPJ. Isi form di samping untuk menambahkan.
             </div>
           ) : (
-            reports.map(r => (
-              <motion.div
-                key={r.id}
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="glass p-5 rounded-2xl"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-foreground truncate">{r.kegiatan}</p>
-                      <span className="text-[10px] uppercase tracking-wide bg-neon-blue/10 text-neon-blue px-2 py-0.5 rounded-full">{r.kategori}</span>
+            <>
+              {/* Desktop: table view */}
+              <div className="hidden lg:block glass rounded-2xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left">
+                      <th className="px-5 py-3"><SortHeader label="Tanggal" k="tanggal" /></th>
+                      <th className="px-5 py-3"><SortHeader label="Kegiatan" k="kegiatan" /></th>
+                      <th className="px-5 py-3"><SortHeader label="Kategori" k="kategori" /></th>
+                      <th className="px-5 py-3 text-[11px] uppercase tracking-wide font-bold text-slate-500">Area</th>
+                      <th className="px-5 py-3 text-right"><div className="flex justify-end"><SortHeader label="Nominal" k="nominal" /></div></th>
+                      <th className="px-5 py-3 text-[11px] uppercase tracking-wide font-bold text-slate-500 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedReports.map(r => (
+                      <tr key={r.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                        <td className="px-5 py-3.5 text-xs text-slate-400 whitespace-nowrap">{r.tanggal}</td>
+                        <td className="px-5 py-3.5 max-w-[220px]">
+                          <p className="text-foreground font-medium truncate">{r.kegiatan}</p>
+                          {r.keterangan && <p className="text-xs text-slate-500 truncate">{r.keterangan}</p>}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span className="text-[10px] uppercase tracking-wide bg-neon-blue/10 text-neon-blue px-2 py-0.5 rounded-full whitespace-nowrap">{r.kategori}</span>
+                        </td>
+                        <td className="px-5 py-3.5 text-xs text-slate-400 max-w-[160px] truncate">{r.area}</td>
+                        <td className="px-5 py-3.5 text-right font-bold text-rose-400 whitespace-nowrap">{formatCurrency(r.nominal)}</td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            {r.kwitansi && (
+                              <button onClick={() => setPreviewReceipt(r.kwitansi!)} title="Lihat Kwitansi" className="p-2 rounded-lg text-slate-400 hover:text-neon-blue hover:bg-white/5 transition-colors">
+                                <ImageIcon className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button onClick={() => printSPJReports([r], `SPJ - ${r.kegiatan}`)} title="Print" className="p-2 rounded-lg text-slate-400 hover:text-neon-blue hover:bg-white/5 transition-colors">
+                              <Printer className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => deleteReport(r.id)} title="Hapus" className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/5 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile: card view */}
+              <div className="lg:hidden space-y-4">
+                {sortedReports.map(r => (
+                  <motion.div
+                    key={r.id}
+                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="glass p-5 rounded-2xl"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-foreground truncate">{r.kegiatan}</p>
+                          <span className="text-[10px] uppercase tracking-wide bg-neon-blue/10 text-neon-blue px-2 py-0.5 rounded-full">{r.kategori}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">{r.area} &middot; {r.tanggal} &middot; {r.namaPegawai}</p>
+                        {r.keterangan && <p className="text-xs text-slate-400 mt-1">{r.keterangan}</p>}
+                      </div>
+                      <p className="text-sm font-bold text-rose-400 whitespace-nowrap">{formatCurrency(r.nominal)}</p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">{r.area} &middot; {r.tanggal} &middot; {r.namaPegawai}</p>
-                    {r.keterangan && <p className="text-xs text-slate-400 mt-1">{r.keterangan}</p>}
-                  </div>
-                  <p className="text-sm font-bold text-rose-400 whitespace-nowrap">{formatCurrency(r.nominal)}</p>
-                </div>
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/5">
-                  {r.kwitansi && (
-                    <button onClick={() => setPreviewReceipt(r.kwitansi!)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-neon-blue transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
-                      <ImageIcon className="w-3.5 h-3.5" /> Lihat Kwitansi
-                    </button>
-                  )}
-                  <button onClick={() => printSPJReports([r], `SPJ - ${r.kegiatan}`)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-neon-blue transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
-                    <Printer className="w-3.5 h-3.5" /> Print
-                  </button>
-                  <button onClick={() => deleteReport(r.id)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 ml-auto">
-                    <Trash2 className="w-3.5 h-3.5" /> Hapus
-                  </button>
-                </div>
-              </motion.div>
-            ))
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/5">
+                      {r.kwitansi && (
+                        <button onClick={() => setPreviewReceipt(r.kwitansi!)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-neon-blue transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
+                          <ImageIcon className="w-3.5 h-3.5" /> Lihat Kwitansi
+                        </button>
+                      )}
+                      <button onClick={() => printSPJReports([r], `SPJ - ${r.kegiatan}`)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-neon-blue transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5">
+                        <Printer className="w-3.5 h-3.5" /> Print
+                      </button>
+                      <button onClick={() => deleteReport(r.id)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 ml-auto">
+                        <Trash2 className="w-3.5 h-3.5" /> Hapus
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </>
           )}
         </motion.div>
       </div>
