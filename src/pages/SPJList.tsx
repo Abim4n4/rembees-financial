@@ -13,6 +13,9 @@ import {
   Pencil,
   User,
   Plus,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useSPJ } from '../context/SPJContext';
@@ -24,6 +27,7 @@ import {
   exportSPJToJSON,
   parseSPJFile,
   printSPJReports,
+  printSPJAsTable,
 } from '../utils';
 import { SPJReport } from '../types';
 
@@ -32,10 +36,14 @@ const SPJList = () => {
   const navigate = useNavigate();
   const [previewReceipt, setPreviewReceipt] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const importInputRef = useRef<HTMLInputElement>(null);
   const [sortKey, setSortKey] = useState<'tanggal' | 'kegiatan' | 'kategori' | 'nominal'>('tanggal');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [monthFilter, setMonthFilter] = useState<string>('all'); // 'all' or 'YYYY-MM'
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const toggleSort = (key: typeof sortKey) => {
     if (sortKey === key) {
@@ -44,14 +52,29 @@ const SPJList = () => {
       setSortKey(key);
       setSortDir('asc');
     }
+    setCurrentPage(1);
   };
 
-  const sortedReports = [...reports].sort((a, b) => {
+  const monthSet = new Set<string>();
+  reports.forEach(r => { if (r.tanggal) monthSet.add(r.tanggal.slice(0, 7)); });
+  const availableMonths: string[] = Array.from(monthSet).sort().reverse();
+
+  const monthLabel = (ym: string) => {
+    const [y, m] = ym.split('-');
+    return new Date(Number(y), Number(m) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
+
+  const filteredReports = monthFilter === 'all' ? reports : reports.filter(r => r.tanggal?.slice(0, 7) === monthFilter);
+
+  const sortedReports = [...filteredReports].sort((a, b) => {
     let cmp = 0;
     if (sortKey === 'nominal') cmp = a.nominal - b.nominal;
     else cmp = String(a[sortKey]).localeCompare(String(b[sortKey]));
     return sortDir === 'asc' ? cmp : -cmp;
   });
+
+  const totalPages = Math.max(1, Math.ceil(sortedReports.length / PAGE_SIZE));
+  const paginatedReports = sortedReports.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const SortHeader = ({ label, k }: { label: string; k: typeof sortKey }) => (
     <button
@@ -85,6 +108,18 @@ const SPJList = () => {
           <p className="text-slate-400 mt-1">Daftar pertanggungjawaban pengeluaran perjalanan dinas luar.</p>
         </div>
         <div className="flex gap-3 relative flex-wrap">
+          <select
+            value={monthFilter}
+            onChange={e => { setMonthFilter(e.target.value); setCurrentPage(1); }}
+            title="Filter bulan"
+            className="glass rounded-xl text-xs px-3 py-2.5 text-foreground bg-transparent focus:outline-none"
+          >
+            <option value="all" className="bg-[#17171a]">Semua Bulan</option>
+            {availableMonths.map(ym => (
+              <option key={ym} value={ym} className="bg-[#17171a]">{monthLabel(ym)}</option>
+            ))}
+          </select>
+
           <button
             onClick={() => navigate('/spj/input')}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-neon-blue to-neon-purple text-white rounded-xl text-sm font-bold neon-glow-blue hover:opacity-90 transition-all"
@@ -145,24 +180,72 @@ const SPJList = () => {
             </AnimatePresence>
           </div>
 
-          <button
-            onClick={() => reports.length ? printSPJReports(reports, 'Laporan SPD - Semua') : toast.error('Belum ada laporan')}
-            className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm font-medium hover:bg-white/10 transition-all text-foreground"
-          >
-            <Printer className="w-4 h-4" />
-            Print Semua
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setPrintOpen(o => !o)}
+              className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm font-medium hover:bg-white/10 transition-all text-foreground"
+            >
+              <Printer className="w-4 h-4" />
+              Print
+            </button>
+            <AnimatePresence>
+              {printOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className="absolute right-0 mt-2 w-64 glass rounded-xl p-2 z-20"
+                >
+                  <button
+                    onClick={() => {
+                      if (!sortedReports.length) { toast.error('Tidak ada data untuk periode ini'); return; }
+                      printSPJAsTable(sortedReports, `Laporan Harian SPD${monthFilter !== 'all' ? ' - ' + monthLabel(monthFilter) : ''}`, true);
+                      setPrintOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-white/10 transition-colors"
+                  >
+                    <CalendarDays className="w-4 h-4 text-neon-blue" />
+                    <div>
+                      <p>Laporan Harian</p>
+                      <p className="text-[11px] text-slate-500">Dikelompokkan per tanggal + subtotal</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!sortedReports.length) { toast.error('Tidak ada data untuk periode ini'); return; }
+                      printSPJAsTable(sortedReports, `Laporan Bulanan SPD${monthFilter !== 'all' ? ' - ' + monthLabel(monthFilter) : ' - Semua Periode'}`, false);
+                      setPrintOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 text-left px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-white/10 transition-colors"
+                  >
+                    <Printer className="w-4 h-4 text-neon-blue" />
+                    <div>
+                      <p>Laporan Bulanan</p>
+                      <p className="text-[11px] text-slate-500">Rekap tabel + total keseluruhan</p>
+                    </div>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
-      <div className="glass p-5 rounded-2xl flex items-center justify-between">
-        <p className="text-sm text-slate-400">Total laporan: <span className="text-foreground font-bold">{reports.length}</span></p>
-        <p className="text-sm text-slate-400">Total nominal: <span className="text-neon-blue font-bold">{formatCurrency(reports.reduce((a, r) => a + r.nominal, 0))}</span></p>
+      <div className="glass p-5 rounded-2xl flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-slate-400">
+          {monthFilter !== 'all' && <span className="text-neon-blue font-semibold mr-2">{monthLabel(monthFilter)}</span>}
+          Total laporan: <span className="text-foreground font-bold">{sortedReports.length}</span>
+        </p>
+        <p className="text-sm text-slate-400">Total nominal: <span className="text-neon-blue font-bold">{formatCurrency(sortedReports.reduce((a, r) => a + r.nominal, 0))}</span></p>
       </div>
 
       {reports.length === 0 ? (
         <div className="glass p-12 rounded-3xl text-center text-slate-500 text-sm">
           Belum ada laporan SPJ. Klik "Tambah Laporan" untuk menambahkan.
+        </div>
+      ) : sortedReports.length === 0 ? (
+        <div className="glass p-12 rounded-3xl text-center text-slate-500 text-sm">
+          Tidak ada laporan untuk bulan ini.
         </div>
       ) : (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -181,7 +264,7 @@ const SPJList = () => {
                 </tr>
               </thead>
               <tbody>
-                {sortedReports.map(r => (
+                {paginatedReports.map(r => (
                   <tr key={r.id} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                     <td className="px-5 py-3.5 text-xs text-slate-400 whitespace-nowrap">{r.tanggal}</td>
                     <td className="px-5 py-3.5 text-xs text-slate-400 max-w-[160px] truncate">{r.area}</td>
@@ -220,7 +303,7 @@ const SPJList = () => {
 
           {/* Mobile: card view */}
           <div className="lg:hidden space-y-4">
-            {sortedReports.map(r => (
+            {paginatedReports.map(r => (
               <motion.div
                 key={r.id}
                 layout
@@ -261,6 +344,49 @@ const SPJList = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 px-1">
+              <p className="text-xs text-slate-500">
+                Halaman {currentPage} dari {totalPages} &middot; {sortedReports.length} laporan
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg glass text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .reduce<number[]>((acc, p) => {
+                    if (acc.length && p - acc[acc.length - 1] > 1) acc.push(-1); // gap marker
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) => p === -1 ? (
+                    <span key={`gap-${i}`} className="text-slate-600 text-xs px-1">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${p === currentPage ? 'bg-gradient-to-r from-neon-blue to-neon-purple text-white' : 'glass text-slate-400 hover:text-foreground hover:bg-white/10'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg glass text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 

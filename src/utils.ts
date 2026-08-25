@@ -239,3 +239,99 @@ function escapeHtml(str: string): string {
   div.textContent = str ?? '';
   return div.innerHTML;
 }
+
+// Prints reports as a compact data table (matching the on-screen columns), optionally
+// grouped by date with per-day subtotals — used for "Laporan Harian" and "Laporan Bulanan".
+export function printSPJAsTable(reports: SPJReport[], title: string, groupByDate: boolean) {
+  const win = window.open('', '_blank', 'width=1100,height=800');
+  if (!win) return;
+
+  const total = reports.reduce((acc, r) => acc + r.nominal, 0);
+
+  const tableRowsHtml = (list: SPJReport[]) => list.map(r => `
+    <tr>
+      <td>${escapeHtml(r.tanggal)}</td>
+      <td>${escapeHtml(r.area)}</td>
+      <td>${escapeHtml(r.kategori)}</td>
+      <td>
+        <div class="title">${escapeHtml(r.kegiatan)}</div>
+        ${r.keterangan ? `<div class="sub">${escapeHtml(r.keterangan)}</div>` : ''}
+      </td>
+      <td>${escapeHtml(r.namaPegawai || '-')}</td>
+      <td class="num">${formatCurrency(r.nominal)}</td>
+    </tr>
+  `).join('');
+
+  let bodyHtml = '';
+
+  if (groupByDate) {
+    const groups: Record<string, SPJReport[]> = {};
+    reports.forEach(r => {
+      if (!groups[r.tanggal]) groups[r.tanggal] = [];
+      groups[r.tanggal].push(r);
+    });
+    const dates = Object.keys(groups).sort();
+    bodyHtml = dates.map(date => {
+      const items = groups[date];
+      const subtotal = items.reduce((acc, r) => acc + r.nominal, 0);
+      return `
+        <h3 class="date-heading">${escapeHtml(date)}</h3>
+        <table>
+          <thead>
+            <tr><th>Tanggal</th><th>Lokasi</th><th>Kategori</th><th>Keterangan / Judul</th><th>Pengguna</th><th class="num">Nominal</th></tr>
+          </thead>
+          <tbody>${tableRowsHtml(items)}</tbody>
+          <tfoot>
+            <tr><td colspan="5" class="num">Subtotal ${escapeHtml(date)}</td><td class="num">${formatCurrency(subtotal)}</td></tr>
+          </tfoot>
+        </table>
+      `;
+    }).join('');
+  } else {
+    bodyHtml = `
+      <table>
+        <thead>
+          <tr><th>Tanggal</th><th>Lokasi</th><th>Kategori</th><th>Keterangan / Judul</th><th>Pengguna</th><th class="num">Nominal</th></tr>
+        </thead>
+        <tbody>${tableRowsHtml(reports)}</tbody>
+      </table>
+    `;
+  }
+
+  win.document.write(`
+    <html>
+      <head>
+        <title>${escapeHtml(title)}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 24px; }
+          h1 { font-size: 18px; text-align: center; margin-bottom: 4px; text-transform: uppercase; }
+          p.meta { text-align: center; font-size: 12px; color: #555; margin-bottom: 20px; }
+          h3.date-heading { font-size: 13px; margin: 18px 0 6px; background: #f0f0f0; padding: 6px 10px; border-radius: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+          th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 11px; text-align: left; vertical-align: top; }
+          th { background: #eee; font-weight: bold; }
+          td .title { font-weight: bold; }
+          td .sub { color: #666; font-size: 10px; }
+          td.num, th.num { text-align: right; white-space: nowrap; }
+          tfoot td { font-weight: bold; background: #fafafa; }
+          .grand-total { text-align: right; font-size: 13px; font-weight: bold; margin-top: 16px; padding-right: 4px; }
+          @media print {
+            h3.date-heading { break-inside: avoid; }
+            table { break-inside: auto; }
+            tr { break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(title)}</h1>
+        <p class="meta">Dicetak pada ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })} &middot; ${reports.length} laporan</p>
+        ${bodyHtml}
+        <p class="grand-total">Total Keseluruhan: ${formatCurrency(total)}</p>
+      </body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 300);
+}
