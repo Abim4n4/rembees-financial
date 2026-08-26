@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  ArrowUpRight, 
-  PieChart, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Settings,
   LogOut,
   Wallet,
   Menu,
@@ -22,10 +20,8 @@ const Sidebar = () => {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
-    { icon: ArrowUpRight, label: 'Transaksi', path: '/transactions' },
-    { icon: PieChart, label: 'Laporan', path: '/reports' },
     { icon: FilePlus2, label: 'Input SPD', path: '/spj/input' },
-    { icon: Briefcase, label: 'Laporan SPD', path: '/spj', end: true },
+    { icon: Briefcase, label: 'Laporan', path: '/spj', end: true },
     { icon: Settings, label: 'Pengaturan', path: '/settings' },
   ];
 
