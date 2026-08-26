@@ -83,7 +83,7 @@ export function exportToCSV(data: any[], filename: string) {
   for (const row of cleanData) {
     const values = headers.map(header => {
       const val = (row as any)[header];
-      const escaped = ('' + val).replace(/"/g, '""');
+      const escaped = sanitizeSpreadsheetCell(val).replace(/"/g, '""');
       return `"${escaped}"`;
     });
     csvRows.push(values.join(','));
@@ -117,15 +117,23 @@ const SPJ_COLUMNS = [
   'id', 'tanggal', 'namaPegawai', 'area', 'kegiatan', 'kategori', 'keterangan', 'nominal', 'createdAt',
 ] as const;
 
+// Neutralizes CSV/Excel formula injection: if a cell's text starts with =, +, -, or @,
+// spreadsheet apps (Excel/Sheets) can interpret it as a formula and execute it on open.
+// Prefixing with a single quote/tab forces it to be read as plain text instead.
+function sanitizeSpreadsheetCell(value: unknown): string {
+  const str = String(value ?? '');
+  return /^[=+\-@]/.test(str) ? `'${str}` : str;
+}
+
 export function exportSPJToExcel(reports: SPJReport[], filename: string) {
   const rows = reports.map(r => ({
     ID: r.id,
     Tanggal: r.tanggal,
-    'Nama Pegawai': r.namaPegawai,
-    'Area/Lokasi': r.area,
-    'Kegiatan/Uraian': r.kegiatan,
-    Kategori: r.kategori,
-    'Keterangan Rinci': r.keterangan,
+    'Nama Pegawai': sanitizeSpreadsheetCell(r.namaPegawai),
+    'Area/Lokasi': sanitizeSpreadsheetCell(r.area),
+    'Kegiatan/Uraian': sanitizeSpreadsheetCell(r.kegiatan),
+    Kategori: sanitizeSpreadsheetCell(r.kategori),
+    'Keterangan Rinci': sanitizeSpreadsheetCell(r.keterangan),
     'Nominal (IDR)': r.nominal,
     'Dibuat Pada': r.createdAt,
   }));
@@ -136,10 +144,10 @@ export function exportSPJToExcel(reports: SPJReport[], filename: string) {
 }
 
 export function exportSPJToCSV(reports: SPJReport[], filename: string) {
-  const rows = reports.map(r => SPJ_COLUMNS.map(col => (r as any)[col] ?? ''));
+  const rows = reports.map(r => SPJ_COLUMNS.map(col => sanitizeSpreadsheetCell((r as any)[col])));
   const csvRows = [SPJ_COLUMNS.join(',')];
   rows.forEach(row => {
-    const escaped = row.map(val => `"${String(val).replace(/"/g, '""')}"`);
+    const escaped = row.map(val => `"${val.replace(/"/g, '""')}"`);
     csvRows.push(escaped.join(','));
   });
   const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
