@@ -31,6 +31,17 @@ export const SPJ_CATEGORY_COLORS: Record<string, string> = {
   'Lain-lain': 'bg-slate-500/10 text-slate-400',
 };
 
+// Hex equivalents of SPJ_CATEGORY_COLORS, for use in recharts (which needs raw hex, not Tailwind classes).
+export const SPJ_CATEGORY_HEX: Record<string, string> = {
+  'Transportasi (BBM/Tol/Tiket)': '#0ea5e9',
+  'Akomodasi (Hotel/Penginapan)': '#a855f7',
+  'Konsumsi': '#f59e0b',
+  'Komunikasi': '#10b981',
+  'Uang Harian': '#06b6d4',
+  'Perlengkapan': '#ec4899',
+  'Lain-lain': '#64748b',
+};
+
 export const APP_COLORS = {
   primary: '#3b82f6',
   secondary: '#8b5cf6',
