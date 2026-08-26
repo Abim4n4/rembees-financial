@@ -22,6 +22,8 @@ import {
   ShieldOff
 } from 'lucide-react';
 import { useFinance, AppTheme } from '../context/FinanceContext';
+import { compressImage } from '../utils';
+import toast from 'react-hot-toast';
 
 const Settings = () => {
   const { user, updateUser, theme, setTheme } = useFinance();
@@ -41,19 +43,37 @@ const Settings = () => {
   }, [user]);
 
   const handleSave = () => {
-    updateUser({ name, email, avatar });
+    if (!name.trim()) {
+      toast.error('Nama tidak boleh kosong.');
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      toast.error('Format email tidak valid.');
+      return;
+    }
+    updateUser({ name: name.trim(), email: email.trim(), avatar });
     setIsSaved(true);
+    toast.success('Pengaturan berhasil disimpan');
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCancel = () => {
+    if (user) {
+      setName(user.name);
+      setEmail(user.email);
+      setAvatar(user.avatar || '');
+    }
+    toast('Perubahan dibatalkan', { icon: '↩️' });
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, 400, 0.8);
+      setAvatar(compressed);
+    } catch {
+      toast.error('Gagal memproses foto. Coba foto lain.');
     }
   };
 
@@ -251,7 +271,7 @@ const Settings = () => {
       </div>
 
       <div className="pt-8 flex justify-end gap-4">
-        <button className="px-6 py-3 glass rounded-2xl text-sm font-bold hover:bg-white/10 transition-all">
+        <button onClick={handleCancel} className="px-6 py-3 glass rounded-2xl text-sm font-bold hover:bg-white/10 transition-all">
           Batalkan Perubahan
         </button>
         <button 
